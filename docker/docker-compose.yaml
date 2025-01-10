@@ -1,0 +1,50 @@
+services:
+  # API service
+  websocket-chatroom:
+    image: websocket-chatroom:latest
+    restart: always
+    environment:
+      # logs config
+      # where logs storage, example: /logs/api.log
+      LOG_PATH:
+      # example: INFO | DEBUG | WARNING | ERROR | CRITICAL
+      LOG_LEVEL: INFO
+      # optional, log record time zone, example: Asia/Shanghai, if not set, use the system default time zone.
+      TZ: Asia/Shanghai
+
+      # database config
+      # example: example.com
+      POSTGRES_HOST:
+      # Integer value, example: 5432
+      POSTGRES_PORT: 5432
+      # database name, example: pg
+      POSTGRES_DATABASE:
+      # example: postgres
+      POSTGRES_USER:
+      # example: postgres
+      POSTGRES_PASSWORD:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Mount the storage directory and logs directory to the container, for storing database files and logs.
+      - ./volumes/log-local:/log-local
+      # optional, remove two lines below to use the system default time zone.
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    ports:
+      - "5555:5555"
+
+  postgres:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_USER:
+      POSTGRES_PASSWORD:
+      POSTGRES_DB: chat_room
+    volumes:
+    - ./volumes/db-local:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U chat_room" ]
+      interval: 3s
+      retries: 10
