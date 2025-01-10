@@ -50,11 +50,11 @@ async def websocket_endpoint(
     clients.append(websocket)
 
     # 获取客户端 IP 和生成随机用户名
-    client_ip = str(websocket.client)
+    client_real_ip = str(websocket.client)
     username = generate_random_username()
 
     # 保存映射关系
-    client_map[websocket] = {"username": username, "ip": client_ip}
+    client_map[websocket] = {"username": username, "ip": client_real_ip}
 
     # 向客户端发送历史消息
     chat_history = await get_chat_history(rds_session)
@@ -68,10 +68,10 @@ async def websocket_endpoint(
 
             # 获取客户端的用户名和 IP 地址
             client_username = client_map[websocket]["username"]
-            client_ip = client_map[websocket]["ip"]
+            client_real_ip = client_map[websocket]["ip"]
 
             # 将消息存储到 Redis
-            await store_message_in_redis(message, client_username, client_ip, rds_session)
+            await store_message_in_redis(message, client_username, client_real_ip, rds_session)
 
             # 向所有连接的客户端广播消息
             for client in clients:
