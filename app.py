@@ -4,6 +4,8 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.authentication import AuthenticationMiddleware
+
 from util.logger import init_logger
 
 init_logger()
@@ -21,9 +23,20 @@ def add_custom_exception_handlers(_app: FastAPI):
     _app.add_exception_handler(ResponseValidationError, response_validation_exception_handler)
 
 
+def register_middlewares(_app: FastAPI):
+    _app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+
 def create_app(span) -> FastAPI:
     _app = FastAPI(lifespan=span)
     register_router(_app)
+    register_middlewares(_app)
     add_custom_exception_handlers(_app)
     return _app
 
@@ -39,14 +52,6 @@ async def lifespan(application: FastAPI): # noqa
 
 
 app = create_app(lifespan)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 if __name__ == "__main__":

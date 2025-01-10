@@ -13,7 +13,7 @@
 
     <script>
         // 创建 WebSocket 连接
-        const socket = new WebSocket("ws://127.0.0.1:8000/api/v1/ws/chat");
+        const socket = new WebSocket("ws://192.168.90.174:8000/api/v1/ws/chat");
 
         // 当接收到消息时，显示到页面上
         socket.onmessage = function(event) {

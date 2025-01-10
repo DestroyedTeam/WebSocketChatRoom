@@ -43,6 +43,7 @@ class RedisConfig(ChatRoomBaseConfig):
     REDIS_DB: int
     REDIS_USER: str = ""
     REDIS_PASSWORD: str = ""
+    REDIS_MAX_CONNECTIONS: int
 
     def __init__(self):
         super().__init__()
