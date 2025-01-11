@@ -1,17 +1,18 @@
 import logging
 
-from exc.database_exc import DatabaseErr, NotFoundRecordsErr
-from exc.http_exc import (
-    BadRequestExc,
-    BaseHttpExc,
-    NotFoundExc,
-)
-from exc.service_exc import BadRequestErr, NotFoundErr
 from fastapi import Request, Response
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY
+
+from exc.database_exc import DatabaseError, NotFoundRecordsError
+from exc.http_exc import (
+    BadRequestExc,
+    BaseHttpExc,
+    NotFoundExc,
+)
+from exc.service_exc import BadRequestError, NotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,9 @@ async def handle_exception(e: Exception, session: AsyncSession | None = None) ->
     def raise_bad_request_exception(detail: str) -> None:
         raise BadRequestExc(detail=detail)
 
-    if isinstance(e, NotFoundErr | NotFoundRecordsErr):
+    if isinstance(e, NotFoundError | NotFoundRecordsError):
         raise NotFoundExc(detail=str(e))
-    elif isinstance(e, BadRequestErr) or isinstance(e, DatabaseErr):
+    elif isinstance(e, BadRequestError) or isinstance(e, DatabaseError):
         raise_bad_request_exception(str(e))
     elif isinstance(e, BaseHttpExc) or isinstance(e, RequestValidationError):
         logger.error(f"Error: {str(e)}")

@@ -3,31 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FastAPI WebSocket Chat</title>
+    <title>WebSocket Chat with File Upload</title>
+    <style>
+        /* 简单的样式 */
+        #file-preview {
+            margin-top: 10px;
+        }
+        .file-preview img, .file-preview video {
+            max-width: 100%;
+            max-height: 300px;
+        }
+    </style>
 </head>
 <body>
-    <h1>FastAPI WebSocket Chat</h1>
+    <h1>WebSocket Chat with File Upload</h1>
     <div id="messages"></div>
-    <input id="messageInput" type="text" placeholder="Type a message" />
-    <button onclick="sendMessage()">Send</button>
+
+    <!-- 文件上传 -->
+    <input type="file" id="file-upload" accept="image/*,video/*,.txt,.pdf,.docx" />
+    <div id="file-preview"></div>
 
     <script>
-        // 创建 WebSocket 连接
         const socket = new WebSocket("ws://192.168.90.174:8000/api/v1/ws/chat");
+        const fileInput = document.querySelector('#file-upload');
+        const messagesDiv = document.querySelector('#messages');
+        const previewDiv = document.querySelector('#file-preview');
 
-        // 当接收到消息时，显示到页面上
-        socket.onmessage = function(event) {
-			console.log(event.data)
-            const messageDiv = document.createElement("div");
-            messageDiv.textContent = event.data;
-            document.getElementById("messages").appendChild(messageDiv);
+        socket.onopen = () => {
+            console.log("WebSocket connection opened");
         };
 
-        // 发送消息到服务器
-        function sendMessage() {
-            const message = document.getElementById("messageInput").value;
-            socket.send(message);
-            document.getElementById("messageInput").value = "";  // 清空输入框
+        socket.onmessage = (event) => {
+            const message_data = JSON.parse(event.data).message;
+            console.log(message_data);
+            // 如果收到的是文件信息
+            if (message_data.type === "file") {
+                const fileUrl = message_data.url;
+                const fileType = message_data.fileType;
+                const filename = message_data.filename;
+
+                // 根据文件类型显示不同的预览
+                if (fileType.startsWith("image")) {
+                    const img = document.createElement("img");
+                    img.src = fileUrl;
+                    previewDiv.appendChild(img);
+                } else if (fileType.startsWith("video")) {
+                    const video = document.createElement("video");
+                    video.src = fileUrl;
+                    video.controls = true;
+                    previewDiv.appendChild(video);
+                } else {
+                    // 其他文件显示文件名和下载按钮
+                    const fileDiv = document.createElement("div");
+                    const downloadLink = document.createElement("a");
+                    downloadLink.href = fileUrl;
+                    downloadLink.textContent = `Download ${filename}`;
+                    downloadLink.setAttribute("download", filename);
+                    fileDiv.appendChild(downloadLink);
+                    previewDiv.appendChild(fileDiv);
+                }
+
+                // 显示文件传输完成信息
+                const messageDiv = document.createElement("div");
+                messageDiv.textContent = `File ${filename} uploaded successfully!`;
+                messagesDiv.appendChild(messageDiv);
+            } else {
+                // 处理文本消息
+                const messageDiv = document.createElement("div");
+                messageDiv.textContent = message_data.message;
+                messagesDiv.appendChild(messageDiv);
+            }
+        };
+
+        // 选择文件并上传
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file.size <= 50 * 1024 * 1024) {
+                // 如果文件小于 50MB，使用 WebSocket 上传
+                sendFileThroughWebSocket(file);
+            } else {
+                // 如果文件大于 50MB，使用传统 HTTP POST 上传
+                uploadFileThroughHttp(file);
+            }
+        });
+
+        // 通过 WebSocket 发送文件
+        function sendFileThroughWebSocket(file) {
+            // 先发送文件元数据（如文件名和文件类型）
+            const metadata = {
+                type: "file",
+                filename: file.name,
+                fileType: file.type,
+                fileSize: file.size  // 你还可以传递文件大小等信息
+            };
+
+            // 发送元数据
+            socket.send(JSON.stringify(metadata));
+
+            // 使用 FileReader 读取文件的二进制数据并发送
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const fileData = e.target.result;  // 获取文件的二进制数据
+                // 发送文件的二进制数据
+                socket.send(fileData);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+
+        // 通过 HTTP 上传文件并获取文件 URL
+        async function uploadFileThroughHttp(file) {
+            const formData = new FormData();
+            formData.append("file", file);
+			console.log("here")
+
+            const response = await fetch("/api/v1/upload", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await response.json();
+            const fileUrl = data.fileUrl;
+
+            // 向 WebSocket 发送文件 URL
+            socket.send(JSON.stringify({
+                type: "file",
+                filename: file.name,
+                fileType: file.type,
+                fileSize: file.size,
+                url: fileUrl,
+            }));
         }
     </script>
 </body>
