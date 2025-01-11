@@ -166,3 +166,7 @@ cython_debug/
 **/*-local
 **/*_local.*
 **/*_local
+
+# static and media files
+static/**
+media/**
