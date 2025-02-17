@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 import starlette.datastructures
 from aioredis import Redis
 from fastapi import APIRouter, Depends, File, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.exceptions import RequestValidationError
 from loguru import logger
 
 from .deps import get_redis_session
@@ -92,17 +91,21 @@ async def websocket_endpoint(websocket: WebSocket, rds_session: Redis = Depends(
         while True:
             # 接收客户端发送的消息
             origin_message = await websocket.receive_json()
-
             if origin_message.get("type") == "file":
                 if origin_message.get("filename") and origin_message.get("fileSize") < 50 * 1024 * 1024:
-                    # 接收文件二进制数据
                     file_data = await websocket.receive_bytes()
-                    if file_data:
-                        file_location = await handle_file_upload(file_data, file_name=origin_message.get("filename"))
-                        origin_message["url"] = file_location
-                        logger.info(f"File saved: {file_location}")
-                logger.warning("File size exceeds 50MB, please use POST to upload.")
-                raise RequestValidationError("File size exceeds 50MB, please use POST to upload.")
+                    print(encrypt_filename(origin_message.get("filename")))
+                    if not os.path.exists(f"/media/uploads/{encrypt_filename(origin_message.get('filename'))}"):
+                        # 接收文件二进制数据
+                        if file_data:
+                            file_location = await handle_file_upload(
+                                file_data, file_name=origin_message.get("filename")
+                            )
+                            origin_message["url"] = file_location
+                            logger.info(f"File saved: {file_location}")
+                else:
+                    logger.warning("File size exceeds 50MB, please use POST to upload.")
+                    await websocket.send_json({"error": "File size exceeds 50MB, please use POST to upload."})
 
             # 获取客户端的用户名和 IP 地址
             client_username = client_map[websocket]["username"]
